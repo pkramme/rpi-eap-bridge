@@ -1,0 +1,135 @@
+{{define "content"}}
+<h1>WiFi setup</h1>
+<p class="lead">Choose your organisation's WiFi network and enter your login. The Raspberry Pi connects to it and shares the internet connection on its Ethernet port.</p>
+
+{{with .FormError}}<div class="notice bad">{{.}}</div>{{end}}
+{{if .Errors}}<div class="notice bad">Please check the fields marked in red.</div>{{end}}
+
+<form id="wifi-form" method="post" action="/wifi" enctype="multipart/form-data">
+{{template "csrf" .CSRF}}
+
+<section class="card">
+  <div class="card-head">
+    <h2>1. Network</h2>
+    <a class="btn small secondary" href="/wifi?rescan=1">↻ Search again</a>
+  </div>
+  {{with .ScanError}}<div class="notice warn">{{.}}</div>{{end}}
+  <fieldset class="networks{{if .Errors.ssid}} has-error{{end}}">
+    <legend class="sr-only">WiFi network</legend>
+    {{range .Networks}}
+      <label class="net{{if not .Enterprise}} unsupported{{end}}">
+        <input type="radio" name="ssid" value="{{.SSID}}"{{if not .Enterprise}} disabled{{end}}{{if and (not $.Form.Other) (eq .SSID $.Form.SSID)}} checked{{end}}>
+        <span class="net-text">
+          <span class="net-name">{{.SSID}}{{if .InUse}} <span class="tag ok">connected</span>{{end}}</span>
+          <span class="net-meta">{{if .Enterprise}}Username + password login{{else}}{{.SecurityLabel}} – not supported{{end}}{{with .Bands}} · {{join . " + "}}{{end}}</span>
+        </span>
+        {{template "bars" .Signal}}
+      </label>
+    {{else}}
+      <p class="muted">No WiFi networks found. Check that WiFi is switched on (see the status page) and click “Search again”.</p>
+    {{end}}
+    <label class="net">
+      <input type="radio" name="ssid" value="__other__"{{if .Form.Other}} checked{{end}}>
+      <span class="net-text">
+        <span class="net-name">Other network</span>
+        <span class="net-meta">Hidden network, or not in range right now</span>
+      </span>
+    </label>
+    <div class="field other-ssid">
+      <label for="ssid_other">Network name (SSID)</label>
+      <input id="ssid_other" name="ssid_other" value="{{.Form.OtherSSID}}" maxlength="32" autocomplete="off" autocapitalize="none" spellcheck="false">
+    </div>
+  </fieldset>
+  {{with .Errors.ssid}}<p class="field-error">{{.}}</p>{{end}}
+</section>
+
+<section class="card">
+  <h2>2. Your login</h2>
+  <div class="field{{if .Errors.identity}} has-error{{end}}">
+    <label for="identity">Username</label>
+    <input id="identity" name="identity" value="{{.Form.Identity}}" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+    <p class="help">Usually the full form, for example <code>jane.doe@university.edu</code>.</p>
+    {{with .Errors.identity}}<p class="field-error">{{.}}</p>{{end}}
+  </div>
+  <div class="field{{if .Errors.password}} has-error{{end}}">
+    <label for="password">Password</label>
+    <input id="password" type="password" name="password" autocomplete="current-password"{{if not .Form.HasSavedPassword}} required{{end}}>
+    {{if .Form.HasSavedPassword}}<p class="help">Leave empty to keep the saved password.</p>{{end}}
+    <label class="check js-only"><input type="checkbox" id="show-password"> Show password</label>
+    {{with .Errors.password}}<p class="field-error">{{.}}</p>{{end}}
+  </div>
+</section>
+
+<section class="card">
+  <h2>3. Security settings</h2>
+  <p class="help">Your IT department's WiFi instructions list these settings. If you are not sure, keep the defaults – they fit most universities and companies.</p>
+  <div class="grid2">
+    <div class="field{{if .Errors.eap}} has-error{{end}}">
+      <label for="eap">Method (EAP)</label>
+      <select id="eap" name="eap">
+        {{range .EAPChoices}}<option value="{{.Value}}"{{if eq .Value $.Form.EAP}} selected{{end}}>{{.Label}}</option>{{end}}
+      </select>
+      {{with .Errors.eap}}<p class="field-error">{{.}}</p>{{end}}
+    </div>
+    <div class="field{{if .Errors.phase2}} has-error{{end}}" data-eap="peap">
+      <label for="phase2_peap">Inner authentication (Phase 2) <span class="muted small">for PEAP</span></label>
+      <select id="phase2_peap" name="phase2_peap">
+        {{range .PEAPChoices}}<option value="{{.Value}}"{{if eq .Value $.Form.Phase2PEAP}} selected{{end}}>{{.Label}}</option>{{end}}
+      </select>
+    </div>
+    <div class="field{{if .Errors.phase2}} has-error{{end}}" data-eap="ttls">
+      <label for="phase2_ttls">Inner authentication (Phase 2) <span class="muted small">for TTLS</span></label>
+      <select id="phase2_ttls" name="phase2_ttls">
+        {{range .TTLSChoices}}<option value="{{.Value}}"{{if eq .Value $.Form.Phase2TTLS}} selected{{end}}>{{.Label}}</option>{{end}}
+      </select>
+    </div>
+  </div>
+  {{with .Errors.phase2}}<p class="field-error">{{.}}</p>{{end}}
+
+  <fieldset class="field ca-modes{{if .Errors.ca_mode}} has-error{{end}}">
+    <legend>Check the network's login server</legend>
+    <label class="radio">
+      <input type="radio" name="ca_mode" value="system"{{if eq .Form.CAMode "system"}} checked{{end}}>
+      <span><strong>Check the server's domain</strong> (recommended)<br><span class="help">Works for most universities and companies.</span></span>
+    </label>
+    <label class="radio">
+      <input type="radio" name="ca_mode" value="file"{{if eq .Form.CAMode "file"}} checked{{end}}>
+      <span><strong>Use a CA certificate file</strong> from my IT department</span>
+    </label>
+    <label class="radio">
+      <input type="radio" name="ca_mode" value="none"{{if eq .Form.CAMode "none"}} checked{{end}}>
+      <span><strong>Don't check</strong> (not recommended)<br><span class="help">Works almost everywhere, but a fake network with the same name could capture your password.</span></span>
+    </label>
+    {{with .Errors.ca_mode}}<p class="field-error">{{.}}</p>{{end}}
+  </fieldset>
+
+  <div class="field{{if .Errors.domain}} has-error{{end}}" data-ca="system file">
+    <label for="domain">Server domain</label>
+    <input id="domain" name="domain" value="{{.Form.Domain}}" placeholder="for example university.edu" autocapitalize="none" spellcheck="false">
+    <p class="help">The domain of your organisation's login server. If you leave this empty, the part after “@” in your username is used.</p>
+    {{with .Errors.domain}}<p class="field-error">{{.}}</p>{{end}}
+  </div>
+  <div class="field{{if .Errors.ca_file}} has-error{{end}}" data-ca="file">
+    <label for="ca_file">CA certificate file (.pem, .crt, .cer or .der)</label>
+    <input id="ca_file" type="file" name="ca_file" accept=".pem,.crt,.cer,.der,.cert">
+    {{if .HaveCAFile}}<p class="help">A certificate is already saved{{with .CASubject}} ({{.}}){{end}}. Only choose a file to replace it.</p>{{end}}
+    {{with .Errors.ca_file}}<p class="field-error">{{.}}</p>{{end}}
+  </div>
+
+  <details class="advanced"{{if or .Form.Anonymous .Errors.anonymous_identity}} open{{end}}>
+    <summary>Advanced</summary>
+    <div class="field{{if .Errors.anonymous_identity}} has-error{{end}}">
+      <label for="anonymous_identity">Anonymous identity (outer identity)</label>
+      <input id="anonymous_identity" name="anonymous_identity" value="{{.Form.Anonymous}}" autocapitalize="none" spellcheck="false">
+      <p class="help">Optional. Some organisations ask for something like <code>anonymous@university.edu</code>, so your real username stays hidden.</p>
+      {{with .Errors.anonymous_identity}}<p class="field-error">{{.}}</p>{{end}}
+    </div>
+  </details>
+</section>
+
+<div class="form-actions">
+  <button type="submit" class="btn big" data-busy="Saving…">Save and connect</button>
+  <a class="btn secondary" href="/">Cancel</a>
+</div>
+</form>
+{{end}}

@@ -1,0 +1,34 @@
+{{define "layout"}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}} · EAP Bridge</title>
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/static/style.css?v={{.AssetVersion}}">
+<script src="/static/app.js?v={{.AssetVersion}}" defer></script>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <a class="brand" href="/"><img src="/static/favicon.svg" alt="" width="28" height="28"><span>EAP Bridge</span></a>
+    <nav aria-label="Main">
+      <a href="/" {{if eq .Nav "status"}}aria-current="page"{{end}}>Status</a>
+      <a href="/wifi" {{if eq .Nav "wifi"}}aria-current="page"{{end}}>WiFi setup</a>
+      <a href="/settings" {{if eq .Nav "settings"}}aria-current="page"{{end}}>Settings</a>
+    </nav>
+  </div>
+</header>
+{{if .Demo}}<div class="demo-banner">Demo mode – nothing here changes a real network. Try the password <code>wrong</code> to see an error.</div>{{end}}
+<main>
+{{with .Flash}}<div class="notice {{$.FlashKind}}" role="status">{{.}}</div>{{end}}
+{{template "content" .}}
+</main>
+<footer>
+  <span>eap-bridge {{.Version}}</span>
+  <span>{{.Hostname}}{{with .LANIP}} · {{.}}{{end}}</span>
+  <a href="/logs">Technical log</a>
+  {{if .Authed}}<form method="post" action="/logout" class="inline"><input type="hidden" name="csrf" value="{{.CSRF}}"><button type="submit" class="linklike">Log out</button></form>{{end}}
+</footer>
+</body>
+</html>{{end}}

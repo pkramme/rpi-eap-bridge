@@ -1,0 +1,7 @@
+{{define "content"}}
+<section class="card narrow">
+  <h1>{{.Title}}</h1>
+  <p>{{.Message}}</p>
+  {{with .Link}}<p><a class="btn" href="{{.}}">{{$.LinkText}}</a></p>{{end}}
+</section>
+{{end}}

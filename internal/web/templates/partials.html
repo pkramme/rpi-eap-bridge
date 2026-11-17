@@ -1,0 +1,118 @@
+{{define "csrf"}}<input type="hidden" name="csrf" value="{{.}}">{{end}}
+
+{{define "bars"}}<span class="bars b{{bars .}}" role="img" aria-label="Signal {{.}}%"><i></i><i></i><i></i><i></i></span>{{end}}
+
+{{define "checklist"}}
+<ul class="checklist">
+{{range .Items}}
+  <li class="{{.Status}}">
+    <span class="icon" aria-hidden="true">{{icon .Status}}</span>
+    <div><strong>{{.Name}}</strong> <span class="detail">{{.Detail}}</span>{{with .Hint}}<p class="hint">{{.}}</p>{{end}}</div>
+  </li>
+{{end}}
+</ul>
+{{end}}
+
+{{define "status"}}
+{{$s := .Status}}
+{{if $s.NMError}}<div class="notice bad"><strong>Network service problem:</strong> {{$s.NMError}}</div>{{end}}
+{{if and $s.WiFi.Present (not $s.WiFi.RadioOn)}}
+  <div class="notice warn">
+    <strong>WiFi is switched off.</strong>
+    {{if $s.Country}}
+      <form method="post" action="/settings/radio" class="inline">{{template "csrf" $.CSRF}}<button type="submit" class="btn small">Switch WiFi on</button></form>
+    {{else}}
+      Please <a href="/settings#country">choose your country</a> first – the Raspberry Pi only uses WiFi once it knows which rules apply.
+    {{end}}
+  </div>
+{{else if and $s.WiFi.Present (not $s.Country)}}
+  <div class="notice warn">The WiFi country is not set. <a href="/settings#country">Choose your country</a> so the WiFi can use all channels that are allowed where you are.</div>
+{{end}}
+{{range $s.Warnings}}<div class="notice warn">{{.}}</div>{{end}}
+
+{{with .Job}}
+<section class="card job {{if .Running}}busy{{else if .Success}}ok{{else}}bad{{end}}" aria-live="polite">
+  {{if .Running}}
+    <h2><span class="spinner" aria-hidden="true"></span>{{if eq .Kind "auto"}}Reconnecting automatically to “{{.SSID}}”…{{else}}Connecting to “{{.SSID}}”…{{end}}</h2>
+    <p class="step">{{.Step}}</p>
+    <p class="muted small">This usually takes 10 to 40 seconds. Started {{since .Started}}.</p>
+  {{else if .Success}}
+    <h2>✓ {{.Headline}}</h2>
+    {{with .Check}}
+      {{template "checklist" .}}
+      <p class="muted small">{{.Summary}}</p>
+    {{end}}
+  {{else}}
+    <h2>{{if eq .Kind "auto"}}Automatic reconnect to “{{.SSID}}” failed{{else}}Could not connect to “{{.SSID}}”{{end}}</h2>
+    <p class="headline">{{.Headline}}</p>
+    {{with .Hints}}<p class="small"><strong>What you can do:</strong></p><ul class="hints">{{range .}}<li>{{.}}</li>{{end}}</ul>{{end}}
+    <div class="actions">
+      <a class="btn" href="/wifi">Check the WiFi settings</a>
+      <form method="post" action="/wifi/reconnect" class="inline">{{template "csrf" $.CSRF}}<button type="submit" class="btn secondary" data-busy="Starting…">Try again</button></form>
+    </div>
+    {{with .Details}}
+      <details id="job-details"><summary>Technical details (for your IT department)</summary><pre class="log">{{range .}}{{.}}
+{{end}}</pre></details>
+    {{end}}
+  {{end}}
+</section>
+{{end}}
+
+<section class="card">
+  <div class="card-head">
+    <h2>WiFi connection</h2>
+    {{if or $s.Configured (eq $s.WiFi.State 100)}}<span class="pill {{$s.WiFi.Tone}}">{{$s.WiFi.Label}}</span>{{else}}<span class="pill off">Not set up</span>{{end}}
+  </div>
+  {{if not $s.Configured}}
+    <p>No WiFi network has been set up yet. Choose your organisation's network (for example <em>eduroam</em>) and enter your login.</p>
+    <p><a class="btn big" href="/wifi">Set up WiFi</a></p>
+  {{else}}
+    <dl class="facts">
+      <dt>Network</dt>
+      <dd>{{$s.Network.SSID}}{{if and $s.WiFi.Managed (ge $s.WiFi.Signal 0)}} &nbsp;{{template "bars" $s.WiFi.Signal}} <span class="muted">{{$s.WiFi.Signal}}% signal</span>{{end}}</dd>
+      <dt>Username</dt><dd>{{$s.Network.Identity}}</dd>
+      {{if $s.WiFi.IPv4}}<dt>IP address</dt><dd>{{join $s.WiFi.IPv4 ", "}}</dd>{{end}}
+      {{if $s.WiFi.Gateway}}<dt>Gateway</dt><dd>{{$s.WiFi.Gateway}}</dd>{{end}}
+    </dl>
+    {{if $s.Paused}}
+      <p class="muted">You switched the WiFi connection off. It stays off until you click “Connect”.</p>
+    {{else if and (not $s.Online) (not $s.NextRetry.IsZero)}}
+      <p class="muted small">The bridge tries again automatically {{until $s.NextRetry}}.</p>
+    {{end}}
+    <div class="actions">
+      {{if and (or $s.Paused (not $s.Online)) (not (and $.Job $.Job.Running))}}
+        <form method="post" action="/wifi/reconnect" class="inline">{{template "csrf" $.CSRF}}<button type="submit" class="btn" data-busy="Starting…">{{if $s.Paused}}Connect{{else}}Connect now{{end}}</button></form>
+      {{end}}
+      <a class="btn secondary" href="/wifi">Change WiFi settings</a>
+      {{if not $s.Paused}}
+        <form method="post" action="/wifi/disconnect" class="inline" data-confirm="Disconnect the WiFi? Devices behind the bridge will lose their internet connection until you connect again.">{{template "csrf" $.CSRF}}<button type="submit" class="btn secondary">Disconnect</button></form>
+      {{end}}
+    </div>
+  {{end}}
+</section>
+
+<section class="card">
+  <div class="card-head">
+    <h2>Ethernet sharing</h2>
+    <span class="pill {{$s.LAN.Tone}}">{{$s.LAN.Label}}</span>
+  </div>
+  <dl class="facts">
+    {{if $s.LAN.Interface}}<dt>Port</dt><dd>{{$s.LAN.Interface}} – {{if $s.LAN.Carrier}}cable plugged in{{else}}no cable plugged in{{end}}</dd>{{end}}
+    <dt>This page</dt><dd><a href="http://{{$s.LAN.Address}}/">http://{{$s.LAN.Address}}</a> (from devices on the Ethernet side)</dd>
+    <dt>Addresses</dt><dd>Devices get an address from {{$s.LAN.Prefix}} automatically (DHCP)</dd>
+  </dl>
+  {{if $s.LAN.Clients}}
+    <h3>Connected devices</h3>
+    <div class="table-wrap">
+    <table class="clients">
+      <thead><tr><th>Device</th><th>IP address</th><th>MAC address</th></tr></thead>
+      <tbody>
+      {{range $s.LAN.Clients}}<tr><td>{{if .Hostname}}{{.Hostname}}{{else}}<span class="muted">unknown name</span>{{end}}</td><td>{{.IP}}</td><td class="mono">{{.MAC}}</td></tr>{{end}}
+      </tbody>
+    </table>
+    </div>
+  {{else if $s.LAN.Active}}
+    <p class="muted">No device has connected yet. Plug a device or a switch into the Ethernet port of the Raspberry Pi.</p>
+  {{end}}
+</section>
+{{end}}

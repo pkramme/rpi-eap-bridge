@@ -1,0 +1,77 @@
+{{define "content"}}
+<h1>Settings</h1>
+{{with .FormError}}<div class="notice bad">{{.}}</div>{{end}}
+
+<section class="card" id="country">
+  <h2>WiFi country</h2>
+  <p class="help">WiFi rules differ between countries. The Raspberry Pi only uses WiFi once it knows where it is.</p>
+  <form method="post" action="/settings/country" class="row">
+    {{template "csrf" .CSRF}}
+    <label for="country-select" class="sr-only">Country</label>
+    <select id="country-select" name="country">
+      {{if not .Status.Country}}<option value="">– Please choose –</option>{{end}}
+      {{range .Countries}}<option value="{{.Code}}"{{if eq .Code $.Status.Country}} selected{{end}}>{{.Name}} ({{.Code}})</option>{{end}}
+    </select>
+    <button type="submit" class="btn" data-busy="Saving…">Save</button>
+  </form>
+  {{if and .Status.WiFi.Present (not .Status.WiFi.RadioOn)}}
+    <form method="post" action="/settings/radio" class="spaced">{{template "csrf" .CSRF}}<button type="submit" class="btn secondary">Switch WiFi on</button></form>
+  {{end}}
+</section>
+
+<section class="card" id="password">
+  <h2>Admin password</h2>
+  {{if .PasswordSet}}
+    <p>This page is protected with a password.</p>
+  {{else}}
+    <p>Right now everyone on the Ethernet side can open this page. Set a password if other people use the same switch.</p>
+  {{end}}
+  <form method="post" action="/settings/password">
+    {{template "csrf" .CSRF}}
+    {{if .PasswordSet}}
+      <div class="field"><label for="current">Current password</label><input id="current" type="password" name="current" autocomplete="current-password" required></div>
+    {{end}}
+    <div class="grid2">
+      <div class="field"><label for="new">New password</label><input id="new" type="password" name="new" autocomplete="new-password" minlength="8"></div>
+      <div class="field"><label for="confirm">Repeat new password</label><input id="confirm" type="password" name="confirm" autocomplete="new-password" minlength="8"></div>
+    </div>
+    <div class="actions">
+      <button type="submit" class="btn" name="action" value="set">Save password</button>
+      {{if .PasswordSet}}<button type="submit" class="btn secondary" name="action" value="remove" data-confirm="Remove the password? Everyone on the Ethernet side will be able to change the settings.">Remove password</button>{{end}}
+    </div>
+  </form>
+  <p class="help">Forgot the password? Put the SD card into a computer and create an empty file named <code>eap-bridge-reset-password</code> on the drive called “bootfs”. The password is removed at the next start.</p>
+</section>
+
+{{if .SavedNetwork}}
+<section class="card">
+  <h2>Delete WiFi settings</h2>
+  <p>Disconnects from “{{.SavedNetwork.SSID}}” and deletes the saved login (including the password) from this Raspberry Pi.</p>
+  <form method="post" action="/wifi/forget" data-confirm="Delete the WiFi settings and the saved password?">
+    {{template "csrf" .CSRF}}
+    <button type="submit" class="btn danger">Delete WiFi settings</button>
+  </form>
+</section>
+{{end}}
+
+<section class="card">
+  <h2>Restart or shut down</h2>
+  <p class="help">Shut down before you unplug the power – this protects the SD card.</p>
+  <div class="actions">
+    <form method="post" action="/system/reboot" class="inline" data-confirm="Restart the Raspberry Pi now?">{{template "csrf" .CSRF}}<button type="submit" class="btn secondary">Restart</button></form>
+    <form method="post" action="/system/poweroff" class="inline" data-confirm="Shut down the Raspberry Pi now? You will have to unplug and replug the power to start it again.">{{template "csrf" .CSRF}}<button type="submit" class="btn secondary">Shut down</button></form>
+  </div>
+</section>
+
+<section class="card">
+  <h2>About</h2>
+  <dl class="facts">
+    <dt>Version</dt><dd>{{.Version}}</dd>
+    <dt>Host name</dt><dd>{{.Hostname}} (<a href="http://{{.Hostname}}.local/">http://{{.Hostname}}.local</a>)</dd>
+    <dt>WiFi adapter</dt><dd>{{or .Status.WiFi.Interface "not found"}}{{with .Status.WiFi.HWAddr}} · MAC <span class="mono">{{.}}</span>{{end}}</dd>
+    <dt>Ethernet port</dt><dd>{{or .Status.LAN.Interface "not found"}} · {{.Status.LAN.Prefix}}</dd>
+    <dt>Configuration</dt><dd class="mono">{{.ConfigPath}}</dd>
+  </dl>
+  <p><a href="/logs">Show the technical log</a> · <a href="/api/status">Status as JSON</a></p>
+</section>
+{{end}}

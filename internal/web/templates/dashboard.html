@@ -1,0 +1,19 @@
+{{define "content"}}
+<div id="live-status" data-refresh="/fragment/status">
+{{template "status" .}}
+</div>
+
+<section class="card" id="check">
+  <div class="card-head"><h2>Connection test</h2></div>
+  <p class="muted">Checks step by step whether the WiFi login, the internet connection and the sharing on the Ethernet port work.</p>
+  <form method="post" action="/check">
+    {{template "csrf" .CSRF}}
+    <button type="submit" class="btn" data-busy="Testing… (up to 20 seconds)">Run connection test</button>
+  </form>
+  {{with .Check}}
+    <p class="summary {{if and .Online .Sharing}}ok{{else if .Online}}warn{{else}}bad{{end}}">{{.Summary}}</p>
+    {{template "checklist" .}}
+    <p class="muted small">Tested {{since .Time}}.</p>
+  {{end}}
+</section>
+{{end}}

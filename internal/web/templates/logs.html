@@ -1,0 +1,14 @@
+{{define "content"}}
+<h1>Technical log</h1>
+<p class="lead">The latest messages of NetworkManager and wpa_supplicant (the WiFi login program) since the last start. They can help your IT department to find a problem.</p>
+{{with .LogError}}<div class="notice warn">The log could not be read: {{.}}</div>{{end}}
+<section class="card">
+{{if .Logs}}
+<pre class="log tall">{{range .Logs}}{{.}}
+{{end}}</pre>
+{{else}}
+<p class="muted">No log messages.</p>
+{{end}}
+</section>
+<p><a class="btn secondary" href="/logs">Reload</a></p>
+{{end}}

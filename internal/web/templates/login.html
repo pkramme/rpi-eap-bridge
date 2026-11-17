@@ -1,0 +1,17 @@
+{{define "content"}}
+<section class="card narrow">
+  <h1>Log in</h1>
+  <p>This bridge is protected with an admin password.</p>
+  {{with .FormError}}<div class="notice bad">{{.}}</div>{{end}}
+  <form method="post" action="/login">
+    {{template "csrf" .CSRF}}
+    <input type="hidden" name="next" value="{{.Next}}">
+    <div class="field">
+      <label for="password">Password</label>
+      <input id="password" type="password" name="password" autocomplete="current-password" required autofocus>
+    </div>
+    <button type="submit" class="btn big">Log in</button>
+  </form>
+  <p class="help">Forgot the password? Put the SD card into a computer and create an empty file named <code>eap-bridge-reset-password</code> on the drive called “bootfs”.</p>
+</section>
+{{end}}
