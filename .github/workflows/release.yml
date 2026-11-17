@@ -1,0 +1,26 @@
+name: release
+
+# Push a tag like v1.0.0 to publish a release with the programs, the
+# installers and the offline ZIP bundle.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go vet ./...
+      - run: go test ./...
+      - run: make release VERSION=${{ github.ref_name }} REPO=${{ github.repository }}
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
