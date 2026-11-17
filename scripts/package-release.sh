@@ -28,7 +28,7 @@ build amd64 "" eap-bridge-linux-amd64
 
 for s in install.sh uninstall.sh; do
   if [ -n "$REPO" ]; then
-    sed "s#YOUR-GITHUB-USER/rpi-eap-bridge#$REPO#g" "scripts/$s" > "$DIST/$s"
+    sed "s#pkramme/rpi-eap-bridge#$REPO#g" "scripts/$s" > "$DIST/$s"
   else
     cp "scripts/$s" "$DIST/$s"
   fi

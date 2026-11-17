@@ -91,7 +91,7 @@ to download the software.
    PowerShell, <kbd>⌘</kbd> + <kbd>V</kbd> in Terminal) and press Enter:
 
    ```bash
-   curl -fsSL https://github.com/YOUR-GITHUB-USER/rpi-eap-bridge/releases/latest/download/install.sh | sudo bash
+   curl -fsSL https://github.com/pkramme/rpi-eap-bridge/releases/latest/download/install.sh | sudo bash
    ```
 
    Enter your password again if asked. After a minute or two the installer

@@ -52,7 +52,7 @@ eduroam / company WiFi ))) Raspberry Pi ──── Switch ──┬── PC
 On Raspberry Pi OS Lite (Bookworm or newer) with temporary internet:
 
 ```bash
-curl -fsSL https://github.com/YOUR-GITHUB-USER/rpi-eap-bridge/releases/latest/download/install.sh | sudo bash
+curl -fsSL https://github.com/pkramme/rpi-eap-bridge/releases/latest/download/install.sh | sudo bash
 ```
 
 Then connect a computer to the Pi's Ethernet port and open <http://192.168.77.1>.
@@ -99,7 +99,7 @@ scripts/             install.sh, uninstall.sh, package-release.sh
 
 ## Publishing releases (maintainers)
 
-1. Replace `YOUR-GITHUB-USER` in `README.md` and `docs/INSTALL.md` with your GitHub
+1. Replace `pkramme` in `README.md` and `docs/INSTALL.md` with your GitHub
    user or organisation. The installer published with a release gets the right
    repository name automatically.
 2. Push a tag: `git tag v1.0.0 && git push origin v1.0.0`. The GitHub Actions workflow

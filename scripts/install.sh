@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # EAP Bridge installer for Raspberry Pi OS (Bookworm, Trixie or newer).
 #
-# Online:   curl -fsSL https://github.com/YOUR-GITHUB-USER/rpi-eap-bridge/releases/latest/download/install.sh | sudo bash
+# Online:   curl -fsSL https://github.com/pkramme/rpi-eap-bridge/releases/latest/download/install.sh | sudo bash
 # Offline:  sudo bash /boot/firmware/eap-bridge/install.sh   (from the release ZIP copied to the SD card)
 #
 # Options:
@@ -11,7 +11,7 @@
 #   --yes            do not ask questions
 set -euo pipefail
 
-REPO="${EAP_BRIDGE_REPO:-YOUR-GITHUB-USER/rpi-eap-bridge}"
+REPO="${EAP_BRIDGE_REPO:-pkramme/rpi-eap-bridge}"
 VERSION="${EAP_BRIDGE_VERSION:-latest}"
 BIN_DST=/usr/local/bin/eap-bridge
 CONF_DIR=/etc/eap-bridge
@@ -87,7 +87,7 @@ elif [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/bin/eap-bridge-linux-$ARCH" ]; th
       || die "The program file is damaged (checksum mismatch). Please copy the folder to the SD card again."
   fi
 else
-  case "$REPO" in YOUR-GITHUB-USER/*)
+  case "$REPO" in pkramme/*)
     die "This installer does not know where to download from. Use the installer from the project's release page, or run: sudo EAP_BRIDGE_REPO=owner/repo bash install.sh" ;;
   esac
   if [ "$VERSION" = latest ]; then
