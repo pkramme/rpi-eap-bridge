@@ -89,13 +89,16 @@ log shows `CTRL-EVENT-ASSOC-REJECT … status_code=16`. The bridge then retries 
 itself in **compatibility mode** (protected management frames, PMF, switched off)
 and keeps that mode if it helps. You can also switch it on yourself under
 **WiFi setup → Advanced**. If it still fails:
-- The network may only allow WPA3-Enterprise, which the Pi's WiFi chip may not
-  support. Ask your IT department whether WPA2-Enterprise is allowed too.
+- **The most common cause:** the network is set to **WPA2/WPA3-Enterprise** (mixed
+  mode) or **WPA3-Enterprise**. The Raspberry Pi's built-in WiFi cannot join such
+  networks; the same network set to **WPA2-Enterprise** works (tested with a UniFi
+  access point). Ask your IT department whether a WPA2-Enterprise network is
+  available.
 - Raspberry Pi WiFi chips cannot use **fast roaming (802.11r)**. Business access
   points (UniFi, Omada, Aruba, …) often have **"Fast Roaming"** or **"802.11r"**
   switched on, and the Pi then cannot join. Ask your IT department to switch it
   off for this network.
-- Testing with your own access point? Use WPA2-Enterprise with AES (CCMP), switch
+- Testing with your own access point? Use **WPA2-Enterprise** (not WPA2/WPA3) with AES (CCMP), switch
   off Fast Roaming (802.11r), set PMF to "optional" or "disabled", and check that
   no MAC address filter blocks the Pi. On UniFi these options are in the network's
   WiFi settings under *Advanced*. To see what the access point offers, run

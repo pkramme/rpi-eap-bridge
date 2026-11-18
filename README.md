@@ -1,6 +1,6 @@
 # EAP Bridge for Raspberry Pi
 
-Turn a Raspberry Pi into a small box that logs in to a **WPA2/WPA3-Enterprise
+Turn a Raspberry Pi into a small box that logs in to a **WPA2-Enterprise
 WiFi** with username and password (802.1X/EAP, for example **eduroam** or a
 company WiFi) and **shares that internet connection on its Ethernet port**.
 
@@ -41,6 +41,11 @@ eduroam / company WiFi ))) Raspberry Pi ──── Switch ──┬── PC
 | **[Connecting your devices](docs/CONNECTING-DEVICES.md)** | using a switch, devices that only have WiFi, what to expect |
 | **[Troubleshooting](docs/TROUBLESHOOTING.md)** | common problems and solutions |
 | **[How it works](docs/HOW-IT-WORKS.md)** | technical reference, configuration, security model |
+
+> [!NOTE]
+> The Raspberry Pi's built-in WiFi cannot join networks set to **WPA2/WPA3-Enterprise**
+> (mixed mode) or **WPA3-Enterprise**. The network must offer **WPA2-Enterprise**.
+> See [known limitations](docs/HOW-IT-WORKS.md#known-limitations).
 
 > [!IMPORTANT]
 > Many organisations do not allow sharing their network or connecting your own network

@@ -178,3 +178,13 @@ eap-bridge version
 - `dnsmasq-base` and `nftables` or `iptables`. Raspberry Pi OS includes them, and the installer adds them if missing.
 - Any Raspberry Pi with WiFi and Ethernet (or a USB Ethernet adapter). Builds:
   `arm64` (64-bit OS), `armv6` (32-bit OS, all models), `amd64`.
+
+## Known limitations
+
+- **WPA2/WPA3-Enterprise mixed mode and WPA3-Enterprise do not work with the
+  built-in WiFi.** On a UniFi test network, the Pi could not join while the network was
+  set to WPA2/WPA3; NetworkManager only logs `CTRL-EVENT-ASSOC-REJECT
+  bssid=00:00:00:00:00:00 status_code=16`. That code is the generic "connect failed"
+  of the Pi's WiFi driver (brcmfmac), and switching off PMF on the Pi did not help.
+  The same network set to WPA2-Enterprise worked. Fast roaming (802.11r) is not
+  supported by this WiFi chip either.

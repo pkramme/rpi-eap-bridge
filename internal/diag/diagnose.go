@@ -113,9 +113,9 @@ func Diagnose(nmError string, logs []string, eap string) Diagnosis {
 		d = Diagnosis{Kind: "assoc", Headline: "The Raspberry Pi could not join the access point. Your username and password were not checked yet – the problem happens one step earlier.",
 			Hints: []string{
 				"The bridge also tried a compatibility mode for Raspberry Pi WiFi chips (protected management frames, PMF, switched off). That did not help either.",
-				"If the network only allows WPA3-Enterprise, the Raspberry Pi's WiFi chip may not support it. Ask your IT department whether WPA2-Enterprise is also allowed.",
+				"The built-in WiFi of the Raspberry Pi cannot join networks set to “WPA2/WPA3-Enterprise” (mixed mode) or “WPA3-Enterprise”. Networks set to “WPA2-Enterprise” work. Ask your IT department whether a WPA2-Enterprise network is available.",
 				"The WiFi chips of Raspberry Pis cannot use fast roaming (802.11r). If the access point has “Fast Roaming” or “802.11r” switched on (common on UniFi, Omada and other business access points), ask your IT department to switch it off for this network.",
-				"Testing with your own access point? Use WPA2-Enterprise with AES (CCMP), switch off Fast Roaming (802.11r), set PMF to “optional” or “disabled”, and check that no MAC address filter blocks the Pi.",
+				"Testing with your own access point? Use WPA2-Enterprise (not WPA2/WPA3) with AES (CCMP), switch off Fast Roaming (802.11r), set PMF to “optional” or “disabled”, and check that no MAC address filter blocks the Pi.",
 				"A weak signal or an overloaded access point can also cause this. Move the Pi closer to the access point.",
 			}}
 
