@@ -96,12 +96,3 @@ internal/demo/       simulated NetworkManager for --demo and tests
 internal/system/     DHCP leases, journal, WiFi country, power
 scripts/             install.sh, uninstall.sh, package-release.sh
 ```
-
-## Publishing releases (maintainers)
-
-1. Replace `pkramme` in `README.md` and `docs/INSTALL.md` with your GitHub
-   user or organisation. The installer published with a release gets the right
-   repository name automatically.
-2. Push a tag: `git tag v1.0.0 && git push origin v1.0.0`. The GitHub Actions workflow
-   tests, builds and publishes the programs, `install.sh`, `uninstall.sh`, the
-   offline ZIP and `SHA256SUMS`.

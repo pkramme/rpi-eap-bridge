@@ -134,7 +134,9 @@ func securityHeaders(next http.Handler) http.Handler {
 		h.Set("Content-Security-Policy", "default-src 'self'; img-src 'self' data:; style-src 'self'; script-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'")
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("X-Frame-Options", "DENY")
-		h.Set("Referrer-Policy", "no-referrer")
+		// Not "no-referrer": with that policy browsers send "Origin: null" on
+		// form submissions, which looks like a cross-site request.
+		h.Set("Referrer-Policy", "same-origin")
 		if strings.HasPrefix(r.URL.Path, "/static/") {
 			h.Set("Cache-Control", "public, max-age=300")
 		} else {

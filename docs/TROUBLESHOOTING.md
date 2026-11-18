@@ -26,10 +26,6 @@ The operating system is too old. Write a current **Raspberry Pi OS** to the SD c
 The Pi has no internet connection. Check the phone hotspot, or use the offline
 method (Method B) in the [installation guide](INSTALL.md).
 
-**`This installer does not know where to download from`**
-You ran the `install.sh` from the source code, not the one from the release page.
-Use the command from the installation guide, or install from the release ZIP.
-
 ---
 
 ## The web interface does not open

@@ -83,8 +83,12 @@ func TestSameOrigin(t *testing.T) {
 	if !sameOrigin("same-origin", "", "x") || sameOrigin("cross-site", "", "x") {
 		t.Error("Sec-Fetch-Site")
 	}
-	if !sameOrigin("", "http://192.168.77.1", "192.168.77.1") || sameOrigin("", "http://evil.example", "192.168.77.1") || sameOrigin("", "null", "192.168.77.1") {
+	if !sameOrigin("", "http://192.168.77.1", "192.168.77.1") || sameOrigin("", "http://evil.example", "192.168.77.1") {
 		t.Error("Origin")
+	}
+	// "null" carries no information; the CSRF token decides.
+	if !sameOrigin("", "null", "192.168.77.1") {
+		t.Error("Origin: null")
 	}
 	if !sameOrigin("", "", "x") {
 		t.Error("no headers")
@@ -257,6 +261,48 @@ func TestCSRF(t *testing.T) {
 	}
 	if w := ts.do("POST", "/settings/radio", lanClient, url.Values{"csrf": {c.Value}}, []*http.Cookie{c}); w.Code != http.StatusSeeOther {
 		t.Errorf("valid token: %d %s", w.Code, w.Body.String())
+	}
+}
+
+// Regression: on plain http://192.168.77.1 browsers send no Sec-Fetch-Site
+// header, and with a no-referrer policy they send "Origin: null". Saving the
+// WiFi form was then rejected as "Request from another web site blocked."
+func TestFormPostFromInsecureLANOrigin(t *testing.T) {
+	ts := newTestServer(t)
+	page := ts.do("GET", "/wifi", lanClient, nil, nil)
+	if p := page.Header().Get("Referrer-Policy"); p == "no-referrer" || p == "" {
+		t.Errorf("Referrer-Policy %q makes browsers send Origin: null", p)
+	}
+	c := getCSRF(t, page)
+	form := url.Values{
+		"csrf": {c.Value}, "ssid": {"eduroam"}, "eap": {"peap"}, "phase2_peap": {"mschapv2"}, "phase2_ttls": {"pap"},
+		"identity": {"jane@uni.edu"}, "password": {"pw"}, "ca_mode": {"system"},
+	}
+	post := func(origin string, withToken bool) int {
+		f := url.Values{}
+		for k, v := range form {
+			f[k] = v
+		}
+		if !withToken {
+			f.Del("csrf")
+		}
+		r := httptest.NewRequest("POST", "/wifi", strings.NewReader(f.Encode()))
+		r.RemoteAddr, r.Host = lanClient, "192.168.77.1"
+		r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		r.Header.Set("Origin", origin)
+		r.AddCookie(c)
+		w := httptest.NewRecorder()
+		ts.h.ServeHTTP(w, r)
+		return w.Code
+	}
+	if code := post("null", false); code != http.StatusForbidden {
+		t.Errorf("Origin null without token: %d, want 403", code)
+	}
+	if code := post("http://evil.example", true); code != http.StatusForbidden {
+		t.Errorf("foreign origin: %d, want 403", code)
+	}
+	if code := post("null", true); code != http.StatusSeeOther {
+		t.Errorf("Origin null with token: %d, want 303", code)
 	}
 }
 

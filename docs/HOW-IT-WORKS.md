@@ -125,7 +125,7 @@ profile active, and DHCP leases.
 - **DNS rebinding:** only IP addresses, `localhost`, `<hostname>` and
   `<hostname>.local` (plus `allowed_hosts`) are accepted as `Host`.
 - **Headers:** strict Content-Security-Policy (no inline scripts or styles),
-  `X-Frame-Options: DENY`, `nosniff`, `no-referrer`, `no-store`.
+  `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy: same-origin`, `no-store`.
 - **Optional admin password:** PBKDF2-HMAC-SHA256 (120,000 iterations, random salt),
   stateless HMAC session cookies (30 days; changing the password logs out all
   sessions), and a growing delay after 5 wrong attempts. A file

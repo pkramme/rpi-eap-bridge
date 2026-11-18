@@ -88,13 +88,19 @@ func hostAllowed(host, hostname string, extra []string) bool {
 }
 
 // sameOrigin rejects cross-site form submissions using the headers that
-// browsers attach to every request.
+// browsers attach to requests. It only rejects what is clearly foreign;
+// everything else is decided by the CSRF token.
+//
+// Sec-Fetch-Site is only sent to secure origins (HTTPS or localhost), so on
+// http://192.168.77.1 the check usually relies on Origin. "Origin: null" is
+// sent by browsers in privacy-related cases (for example a no-referrer
+// policy) and says nothing about the sender.
 func sameOrigin(fetchSite, origin, host string) bool {
 	if fetchSite != "" {
 		return fetchSite == "same-origin" || fetchSite == "none"
 	}
-	if origin == "" {
-		return true // not a browser, or a very old one; the CSRF token still applies
+	if origin == "" || origin == "null" {
+		return true // unknown; the CSRF token and SameSite cookie still apply
 	}
 	u, err := url.Parse(origin)
 	return err == nil && strings.EqualFold(u.Host, host)

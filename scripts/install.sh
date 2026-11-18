@@ -87,9 +87,6 @@ elif [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/bin/eap-bridge-linux-$ARCH" ]; th
       || die "The program file is damaged (checksum mismatch). Please copy the folder to the SD card again."
   fi
 else
-  case "$REPO" in pkramme/*)
-    die "This installer does not know where to download from. Use the installer from the project's release page, or run: sudo EAP_BRIDGE_REPO=owner/repo bash install.sh" ;;
-  esac
   if [ "$VERSION" = latest ]; then
     BASE="https://github.com/$REPO/releases/latest/download"
   else
