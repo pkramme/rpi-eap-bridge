@@ -32,7 +32,10 @@ type WiFi struct {
 	CAMode            string `json:"ca_mode"` // "system", "file" or "none"
 	Domain            string `json:"domain,omitempty"`
 	CASubject         string `json:"ca_subject,omitempty"`
-	UUID              string `json:"uuid"`
+	// CompatMode switches off protected management frames (PMF/802.11w).
+	// Some Raspberry Pi WiFi chips cannot join networks with PMF enabled.
+	CompatMode bool   `json:"compat_mode,omitempty"`
+	UUID       string `json:"uuid"`
 }
 
 // Config is the complete bridge configuration.

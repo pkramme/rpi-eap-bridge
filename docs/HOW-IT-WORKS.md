@@ -58,6 +58,7 @@ the whole file.
 | `connection.autoconnect-priority` | `100` | preferred over other WiFi profiles (e.g. a setup hotspot) |
 | `connection.autoconnect-retries` | `0` | NetworkManager never gives up |
 | `wifi.powersave` | `2` (off) | lower latency, fewer drop-outs |
+| `wifi-security.pmf` | `1` (off), only in compatibility mode | some Raspberry Pi WiFi chips cannot join when PMF (802.11w) is negotiated |
 | `ipv4.may-fail` | `false` | the shared side is IPv4, so IPv4 is required |
 
 **`eap-bridge-lan.nmconnection`** (Ethernet side)
@@ -91,12 +92,14 @@ interface pauses all of this (also across reboots) until the user connects again
 
 When an activation fails, `eap-bridge` reads the NetworkManager and
 wpa_supplicant messages written since the attempt started (`journalctl`) and
-classifies them:
+classifies them. Only the lines of the most recent activation (from the last
+"Activation: starting connection") count, so earlier attempts do not distort the result:
 
 | Evidence | Diagnosis |
 |---|---|
 | `CTRL-EVENT-EAP-TLS-CERT-ERROR`, "Domain suffix mismatch", … | server certificate check failed |
 | `CTRL-EVENT-EAP-PROPOSED-METHOD method=21/25` differs from the configured method and never selected | wrong EAP method (TLS = 13: certificate login, unsupported) |
+| `CTRL-EVENT-ASSOC-REJECT` / `reason=CONN_FAILED` without `CTRL-EVENT-EAP-STARTED` | joining the access point failed before the login; the bridge retries once with PMF off and keeps that only if it works |
 | `CTRL-EVENT-EAP-FAILURE`, `reason=AUTH_FAILED` | credentials rejected |
 | "could not be found", `CTRL-EVENT-NETWORK-NOT-FOUND` | network not in range |
 | "IP configuration could not be reserved" | DHCP failed after a successful login |

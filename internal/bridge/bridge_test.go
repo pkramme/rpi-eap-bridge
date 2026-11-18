@@ -283,3 +283,41 @@ func TestMethodMismatchDiagnosis(t *testing.T) {
 		t.Fatalf("expected a method hint, got %+v", j)
 	}
 }
+
+func TestCompatModeRetry(t *testing.T) {
+	e := newEnv(t)
+	profile := filepath.Join(e.dir, "conns", "eap-bridge-wifi.nmconnection")
+
+	// LegacyNet can only be joined with PMF off: the bridge retries by itself
+	// and keeps compatibility mode.
+	req := bridge.ConnectRequest{SSID: "LegacyNet", EAP: "peap", Phase2: "mschapv2", Identity: "jane@uni.edu", Password: "pw", CAMode: "none"}
+	req.Normalize()
+	if err := e.m.Connect(context.Background(), req); err != nil {
+		t.Fatal(err)
+	}
+	if j := waitJob(t, e.m); !j.Success {
+		t.Fatalf("expected success in compatibility mode, got %+v", j)
+	}
+	if !e.store.Get().WiFi.CompatMode {
+		t.Error("compatibility mode not saved")
+	}
+	if data, _ := os.ReadFile(profile); !strings.Contains(string(data), "pmf=1") {
+		t.Errorf("profile without pmf=1:\n%s", data)
+	}
+
+	// WPA3-Only can never be joined: clear diagnosis, normal profile restored.
+	req.SSID = "WPA3-Only"
+	if err := e.m.Connect(context.Background(), req); err != nil {
+		t.Fatal(err)
+	}
+	j := waitJob(t, e.m)
+	if j.Success || !strings.Contains(j.Headline, "could not join") {
+		t.Fatalf("expected association failure, got %+v", j)
+	}
+	if e.store.Get().WiFi.CompatMode {
+		t.Error("compatibility mode kept although it did not help")
+	}
+	if data, _ := os.ReadFile(profile); strings.Contains(string(data), "pmf=") {
+		t.Errorf("profile not restored:\n%s", data)
+	}
+}

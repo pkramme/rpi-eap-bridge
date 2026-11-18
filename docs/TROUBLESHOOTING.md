@@ -82,6 +82,27 @@ Change **Method (EAP)** as suggested, check the inner authentication, and try ag
 **"This network asks for a login with a personal certificate (EAP-TLS)."**
 This bridge only supports username + password logins.
 
+**"The Raspberry Pi could not join the access point."**
+This happens before your username and password are checked, so they are not the
+problem. The Pi's WiFi chip could not connect to the access point; the technical
+log shows `CTRL-EVENT-ASSOC-REJECT … status_code=16`. The bridge then retries by
+itself in **compatibility mode** (protected management frames, PMF, switched off)
+and keeps that mode if it helps. You can also switch it on yourself under
+**WiFi setup → Advanced**. If it still fails:
+- The network may only allow WPA3-Enterprise, which the Pi's WiFi chip may not
+  support. Ask your IT department whether WPA2-Enterprise is allowed too.
+- Raspberry Pi WiFi chips cannot use **fast roaming (802.11r)**. Business access
+  points (UniFi, Omada, Aruba, …) often have **"Fast Roaming"** or **"802.11r"**
+  switched on, and the Pi then cannot join. Ask your IT department to switch it
+  off for this network.
+- Testing with your own access point? Use WPA2-Enterprise with AES (CCMP), switch
+  off Fast Roaming (802.11r), set PMF to "optional" or "disabled", and check that
+  no MAC address filter blocks the Pi. On UniFi these options are in the network's
+  WiFi settings under *Advanced*. To see what the access point offers, run
+  `sudo iw dev wlan0 scan ssid <network name> | sed -n '/RSN:/,/Capabilities/p'`.
+  `FT/IEEE 802.1X` in the output means fast roaming is on.
+- Move the Pi closer to the access point.
+
 **"The login did not finish in time."**
 Usually a wrong security setting (method, inner authentication, certificate check). It can also mean a
 weak signal or a busy login server. The bridge keeps trying automatically.

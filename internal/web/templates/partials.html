@@ -71,6 +71,7 @@
       <dt>Network</dt>
       <dd>{{$s.Network.SSID}}{{if and $s.WiFi.Managed (ge $s.WiFi.Signal 0)}} &nbsp;{{template "bars" $s.WiFi.Signal}} <span class="muted">{{$s.WiFi.Signal}}% signal</span>{{end}}</dd>
       <dt>Username</dt><dd>{{$s.Network.Identity}}</dd>
+      {{if $s.Network.CompatMode}}<dt>WiFi mode</dt><dd>Compatibility mode (PMF off)</dd>{{end}}
       {{if $s.WiFi.IPv4}}<dt>IP address</dt><dd>{{join $s.WiFi.IPv4 ", "}}</dd>{{end}}
       {{if $s.WiFi.Gateway}}<dt>Gateway</dt><dd>{{$s.WiFi.Gateway}}</dd>{{end}}
     </dl>

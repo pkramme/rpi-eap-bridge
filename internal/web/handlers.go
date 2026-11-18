@@ -110,6 +110,7 @@ type wifiForm struct {
 	Phase2TTLS       string
 	Identity         string
 	Anonymous        string
+	CompatMode       bool
 	CAMode           string
 	Domain           string
 	HasSavedPassword bool
@@ -130,6 +131,7 @@ func formFromConfig(w *config.WiFi) wifiForm {
 	if w.Hidden {
 		f.Other, f.OtherSSID = true, w.SSID
 	}
+	f.CompatMode = w.CompatMode
 	f.HasSavedPassword = true
 	return f
 }
@@ -200,6 +202,7 @@ func (s *Server) handleWiFiSubmit(w http.ResponseWriter, r *http.Request) {
 		Phase2TTLS:       r.FormValue("phase2_ttls"),
 		Identity:         r.FormValue("identity"),
 		Anonymous:        r.FormValue("anonymous_identity"),
+		CompatMode:       r.FormValue("compat_mode") == "on",
 		CAMode:           r.FormValue("ca_mode"),
 		Domain:           r.FormValue("domain"),
 		HasSavedPassword: cfg.WiFi != nil,
@@ -207,7 +210,7 @@ func (s *Server) handleWiFiSubmit(w http.ResponseWriter, r *http.Request) {
 	f.Other = f.SSID == "__other__"
 	req := bridge.ConnectRequest{
 		EAP: f.EAP, Identity: f.Identity, Password: r.FormValue("password"),
-		AnonymousIdentity: f.Anonymous, CAMode: f.CAMode, Domain: f.Domain,
+		AnonymousIdentity: f.Anonymous, CAMode: f.CAMode, Domain: f.Domain, CompatMode: f.CompatMode,
 	}
 	if f.Other {
 		// A network that is not in the list may be hidden: let

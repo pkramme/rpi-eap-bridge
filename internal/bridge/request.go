@@ -68,6 +68,7 @@ type ConnectRequest struct {
 	CAMode            string // "system", "file" or "none"
 	Domain            string
 	CACert            []byte // uploaded CA certificate (optional)
+	CompatMode        bool   // switch off protected management frames (PMF)
 }
 
 var reDomain = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$`)

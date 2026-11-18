@@ -30,6 +30,10 @@ type EAPProfile struct {
 	SystemCACerts     bool
 	DomainSuffixMatch string
 
+	// DisablePMF switches off protected management frames (802.11w). This
+	// helps WiFi chips that fail to associate when PMF is negotiated.
+	DisablePMF bool
+
 	Autoconnect bool
 	Priority    int
 }
@@ -103,7 +107,11 @@ func (p EAPProfile) Keyfile() ([]byte, error) {
 	// 2 = disable power saving: lower latency and fewer drop-outs.
 	w.SetInt("powersave", 2)
 
-	k.Section("wifi-security").SetRaw("key-mgmt", "wpa-eap")
+	sec := k.Section("wifi-security")
+	sec.SetRaw("key-mgmt", "wpa-eap")
+	if p.DisablePMF {
+		sec.SetInt("pmf", 1) // NM_SETTING_WIRELESS_SECURITY_PMF_DISABLE
+	}
 
 	x := k.Section("802-1x")
 	x.SetRaw("eap", p.EAP+";")

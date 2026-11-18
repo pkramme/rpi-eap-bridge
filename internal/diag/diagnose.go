@@ -109,6 +109,16 @@ func Diagnose(nmError string, logs []string, eap string) Diagnosis {
 				"Some networks only accept registered devices. The WiFi MAC address of this Pi is shown under Settings → About.",
 			}}
 
+	case AssociationFailed(logs):
+		d = Diagnosis{Kind: "assoc", Headline: "The Raspberry Pi could not join the access point. Your username and password were not checked yet – the problem happens one step earlier.",
+			Hints: []string{
+				"The bridge also tried a compatibility mode for Raspberry Pi WiFi chips (protected management frames, PMF, switched off). That did not help either.",
+				"If the network only allows WPA3-Enterprise, the Raspberry Pi's WiFi chip may not support it. Ask your IT department whether WPA2-Enterprise is also allowed.",
+				"The WiFi chips of Raspberry Pis cannot use fast roaming (802.11r). If the access point has “Fast Roaming” or “802.11r” switched on (common on UniFi, Omada and other business access points), ask your IT department to switch it off for this network.",
+				"Testing with your own access point? Use WPA2-Enterprise with AES (CCMP), switch off Fast Roaming (802.11r), set PMF to “optional” or “disabled”, and check that no MAC address filter blocks the Pi.",
+				"A weak signal or an overloaded access point can also cause this. Move the Pi closer to the access point.",
+			}}
+
 	case has("CTRL-EVENT-ASSOC-REJECT"):
 		d = Diagnosis{Kind: "assoc", Headline: "The access point refused the connection.",
 			Hints: []string{"The access point may be full or the signal too weak. The bridge retries automatically; moving the Pi closer to an access point helps."}}
@@ -145,6 +155,34 @@ func Diagnose(nmError string, logs []string, eap string) Diagnosis {
 		d.Hints = append(d.Hints, fmt.Sprintf("The login server of the network identified itself as “%s”.", server))
 	}
 	return d
+}
+
+// LastAttempt returns the log lines of the most recent activation, starting
+// at NetworkManager's "Activation: starting connection" line. Earlier
+// attempts (a previous try, or an automatic activation that NetworkManager
+// started and then replaced) would otherwise distort the analysis.
+func LastAttempt(logs []string) []string {
+	for i := len(logs) - 1; i >= 0; i-- {
+		if strings.Contains(logs[i], "Activation: starting connection") {
+			return logs[i:]
+		}
+	}
+	return logs
+}
+
+// AssociationFailed reports whether joining the access point failed before
+// the 802.1X login started (wpa_supplicant never began EAP).
+func AssociationFailed(logs []string) bool {
+	assoc, eap := false, false
+	for _, l := range logs {
+		if strings.Contains(l, "CTRL-EVENT-ASSOC-REJECT") || strings.Contains(l, "reason=CONN_FAILED") {
+			assoc = true
+		}
+		if strings.Contains(l, "CTRL-EVENT-EAP-STARTED") {
+			eap = true
+		}
+	}
+	return assoc && !eap
 }
 
 func serverName(text string) string {

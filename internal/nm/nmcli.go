@@ -24,12 +24,24 @@ func (e *CmdError) Error() string {
 }
 
 // Message returns the human readable part of the error output.
+// nmcli also prints "Warning:" and "Hint:" lines (for example a warning
+// about secrets it cannot ask for interactively); only the "Error:" lines
+// are returned when present.
 func (e *CmdError) Message() string {
+	var errs []string
+	for _, l := range strings.Split(e.Stderr, "\n") {
+		if msg, ok := strings.CutPrefix(strings.TrimSpace(l), "Error: "); ok {
+			errs = append(errs, msg)
+		}
+	}
+	if len(errs) > 0 {
+		return strings.Join(errs, " ")
+	}
 	m := strings.TrimSpace(e.Stderr)
 	if m == "" && e.Err != nil {
 		m = e.Err.Error()
 	}
-	return strings.TrimPrefix(m, "Error: ")
+	return m
 }
 
 func (e *CmdError) Unwrap() error { return e.Err }

@@ -329,23 +329,15 @@ func (m *Manager) Connect(ctx context.Context, req ConnectRequest) error {
 		password = pw
 	}
 
-	auth, authEAP := profilePhase2(req.EAP, req.Phase2)
-	prof := nm.EAPProfile{
-		ID: WiFiConnID, UUID: uuid, Interface: wifiIf,
-		SSID: []byte(req.SSID), Hidden: req.Hidden,
-		EAP: req.EAP, Phase2Auth: auth, Phase2AuthEAP: authEAP,
-		Identity: req.Identity, AnonymousIdentity: req.AnonymousIdentity, Password: password,
-		Autoconnect: true, Priority: 100,
+	w := config.WiFi{
+		SSID: req.SSID, Hidden: req.Hidden, EAP: req.EAP, Phase2: req.Phase2,
+		Identity: req.Identity, AnonymousIdentity: req.AnonymousIdentity,
+		CAMode: req.CAMode, Domain: req.Domain, CompatMode: req.CompatMode, UUID: uuid,
 	}
-	caSubject := ""
-	if cfg.WiFi != nil {
-		caSubject = cfg.WiFi.CASubject
-	}
-	switch req.CAMode {
-	case "system":
-		prof.SystemCACerts = true
-		prof.DomainSuffixMatch = req.Domain
-	case "file":
+	if req.CAMode == "file" {
+		if cfg.WiFi != nil {
+			w.CASubject = cfg.WiFi.CASubject
+		}
 		if len(req.CACert) > 0 {
 			pemData, desc, err := NormalizeCACert(req.CACert)
 			if err != nil {
@@ -354,14 +346,49 @@ func (m *Manager) Connect(ctx context.Context, req ConnectRequest) error {
 			if err := fsutil.WriteFileAtomic(m.caPath(), pemData, 0o644); err != nil {
 				return fmt.Errorf("saving the CA certificate: %w", err)
 			}
-			caSubject = desc
+			w.CASubject = desc
 		} else if !m.HasCAFile() {
 			return &FieldError{"ca_file", "Please choose the CA certificate file from your IT department."}
 		}
-		prof.CACertPath = m.caPath()
-		prof.DomainSuffixMatch = req.Domain
 	}
 
+	if err := m.writeWiFiProfile(ctx, w, password, wifiIf); err != nil {
+		return err
+	}
+	err := m.cfg.Update(func(c *config.Config) error {
+		c.WiFi = &w
+		c.Paused = false
+		return nil
+	})
+	if err != nil {
+		return fmt.Errorf("saving the configuration: %w", err)
+	}
+	m.log.Info("WiFi settings saved", "ssid", req.SSID, "eap", req.EAP, "phase2", req.Phase2, "ca_mode", req.CAMode, "compat_mode", req.CompatMode)
+	m.resetRetry()
+	_, err = m.startJob("connect", req.SSID, uuid)
+	return err
+}
+
+// writeWiFiProfile writes the NetworkManager profile for the saved settings
+// w and makes NetworkManager load it.
+func (m *Manager) writeWiFiProfile(ctx context.Context, w config.WiFi, password, wifiIf string) error {
+	auth, authEAP := profilePhase2(w.EAP, w.Phase2)
+	prof := nm.EAPProfile{
+		ID: WiFiConnID, UUID: w.UUID, Interface: wifiIf,
+		SSID: []byte(w.SSID), Hidden: w.Hidden,
+		EAP: w.EAP, Phase2Auth: auth, Phase2AuthEAP: authEAP,
+		Identity: w.Identity, AnonymousIdentity: w.AnonymousIdentity, Password: password,
+		DisablePMF:  w.CompatMode,
+		Autoconnect: true, Priority: 100,
+	}
+	switch w.CAMode {
+	case "system":
+		prof.SystemCACerts = true
+		prof.DomainSuffixMatch = w.Domain
+	case "file":
+		prof.CACertPath = m.caPath()
+		prof.DomainSuffixMatch = w.Domain
+	}
 	data, err := prof.Keyfile()
 	if err != nil {
 		return err
@@ -373,25 +400,7 @@ func (m *Manager) Connect(ctx context.Context, req ConnectRequest) error {
 	if err := m.nm.Load(ctx, path); err != nil {
 		return fmt.Errorf("NetworkManager did not accept the WiFi profile: %s", nm.ErrorMessage(err))
 	}
-	if req.CAMode != "file" {
-		caSubject = ""
-	}
-	err = m.cfg.Update(func(c *config.Config) error {
-		c.WiFi = &config.WiFi{
-			SSID: req.SSID, Hidden: req.Hidden, EAP: req.EAP, Phase2: req.Phase2,
-			Identity: req.Identity, AnonymousIdentity: req.AnonymousIdentity,
-			CAMode: req.CAMode, Domain: req.Domain, CASubject: caSubject, UUID: uuid,
-		}
-		c.Paused = false
-		return nil
-	})
-	if err != nil {
-		return fmt.Errorf("saving the configuration: %w", err)
-	}
-	m.log.Info("WiFi settings saved", "ssid", req.SSID, "eap", req.EAP, "phase2", req.Phase2, "ca_mode", req.CAMode)
-	m.resetRetry()
-	_, err = m.startJob("connect", req.SSID, uuid)
-	return err
+	return nil
 }
 
 // Reconnect starts a new connection attempt with the saved settings.
@@ -557,17 +566,30 @@ func (m *Manager) runJob(j *Job, uuid string) {
 
 	m.log.Info("connecting", "ssid", j.SSID, "kind", j.Kind)
 	err := m.nm.Up(ctx, uuid, wifiIf, m.opt.ActivateTimeout)
+
+	var logs []string
+	if err != nil {
+		logs, _ = m.sys.Journal(ctx, j.Started.Add(-2*time.Second), 400)
+		// The WiFi chips of some Raspberry Pi models cannot join a network
+		// when protected management frames (PMF) are negotiated: joining
+		// fails before the login even starts. Retry once without PMF.
+		if diag.AssociationFailed(diag.LastAttempt(logs)) {
+			if tried, retryErr := m.retryCompatMode(ctx, j, uuid, wifiIf); tried {
+				err = retryErr
+				logs, _ = m.sys.Journal(ctx, j.Started.Add(-2*time.Second), 400)
+			}
+		}
+	}
 	stopMonitor()
 	m.invalidateStatus()
 
 	if err != nil {
 		msg := nm.ErrorMessage(err)
-		logs, _ := m.sys.Journal(ctx, j.Started.Add(-2*time.Second), 400)
 		eap := ""
 		if cfg := m.cfg.Get(); cfg.WiFi != nil {
 			eap = cfg.WiFi.EAP
 		}
-		d := diag.Diagnose(msg, logs, eap)
+		d := diag.Diagnose(msg, diag.LastAttempt(logs), eap)
 		details := append([]string{"nmcli: " + msg}, diag.Relevant(logs, wifiIf, 80)...)
 		m.log.Warn("connection attempt failed", "ssid", j.SSID, "error", msg, "diagnosis", d.Kind)
 		m.finishJob(j, false, d, details, nil)
@@ -584,6 +606,48 @@ func (m *Manager) runJob(j *Job, uuid string) {
 	}
 	m.log.Info("connected", "ssid", j.SSID, "internet", res.Online)
 	m.finishJob(j, true, diag.Diagnosis{Headline: head}, nil, &res)
+}
+
+// retryCompatMode rewrites the profile with PMF switched off and connects
+// again. It keeps compatibility mode only if that attempt succeeds, so
+// networks that require PMF are not left in a worse state. tried is false
+// when compatibility mode was already on (or could not be prepared).
+func (m *Manager) retryCompatMode(ctx context.Context, j *Job, uuid, wifiIf string) (tried bool, err error) {
+	cfg := m.cfg.Get()
+	if cfg.WiFi == nil || cfg.WiFi.CompatMode || cfg.WiFi.UUID != uuid {
+		return false, nil
+	}
+	password, perr := m.nm.Secret(ctx, uuid, "802-1x.password")
+	if perr != nil {
+		m.log.Warn("compatibility retry skipped: password not readable", "error", nm.ErrorMessage(perr))
+		return false, nil
+	}
+	compat := *cfg.WiFi
+	compat.CompatMode = true
+	if werr := m.writeWiFiProfile(ctx, compat, password, wifiIf); werr != nil {
+		m.log.Warn("compatibility retry skipped", "error", werr)
+		return false, nil
+	}
+	m.setStep(j, "Joining the network failed – trying again in compatibility mode…")
+	m.log.Info("joining the WiFi failed, retrying with PMF switched off", "ssid", j.SSID)
+	err = m.nm.Up(ctx, uuid, wifiIf, m.opt.ActivateTimeout)
+	if err == nil {
+		if uerr := m.cfg.Update(func(c *config.Config) error {
+			if c.WiFi != nil && c.WiFi.UUID == uuid {
+				c.WiFi.CompatMode = true
+			}
+			return nil
+		}); uerr != nil {
+			m.log.Warn("could not save compatibility mode", "error", uerr)
+		}
+		m.log.Info("connected in compatibility mode (PMF off)", "ssid", j.SSID)
+		return true, nil
+	}
+	// Did not help: restore the normal profile.
+	if werr := m.writeWiFiProfile(ctx, *cfg.WiFi, password, wifiIf); werr != nil {
+		m.log.Warn("could not restore the WiFi profile", "error", werr)
+	}
+	return true, err
 }
 
 func (m *Manager) finishJob(j *Job, ok bool, d diag.Diagnosis, details []string, res *CheckResult) {

@@ -150,3 +150,33 @@ func TestLANProfileKeyfile(t *testing.T) {
 		t.Errorf("unexpected profile:\n%s", data)
 	}
 }
+
+func TestDisablePMF(t *testing.T) {
+	p := EAPProfile{ID: "x", UUID: "u", SSID: []byte("n"), EAP: "peap", Phase2Auth: "mschapv2", Identity: "i", Password: "p"}
+	data, err := p.Keyfile()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(data), "pmf=") {
+		t.Errorf("pmf set by default:\n%s", data)
+	}
+	p.DisablePMF = true
+	data, _ = p.Keyfile()
+	kf, err := ParseKeyFile(data)
+	if err != nil || kf["wifi-security"]["pmf"] != "1" || kf["wifi-security"]["key-mgmt"] != "wpa-eap" {
+		t.Errorf("pmf not disabled (%v):\n%s", err, data)
+	}
+}
+
+func TestErrorMessageDropsWarnings(t *testing.T) {
+	// Real nmcli output from a Raspberry Pi.
+	e := &CmdError{Stderr: "Warning: password for '802-1x.identity' not given in 'passwd-file' and nmcli cannot ask without '--ask' option.\n" +
+		"Error: Connection activation failed: Secrets were required, but not provided\n" +
+		"Hint: use 'journalctl -xe NM_CONNECTION=f794081d + NM_DEVICE=wlan0' to get more details.\n"}
+	if got := e.Message(); got != "Connection activation failed: Secrets were required, but not provided" {
+		t.Errorf("got %q", got)
+	}
+	if got := (&CmdError{Stderr: "something odd\n"}).Message(); got != "something odd" {
+		t.Errorf("fallback: got %q", got)
+	}
+}

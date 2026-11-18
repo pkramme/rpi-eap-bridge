@@ -116,13 +116,17 @@
     {{with .Errors.ca_file}}<p class="field-error">{{.}}</p>{{end}}
   </div>
 
-  <details class="advanced"{{if or .Form.Anonymous .Errors.anonymous_identity}} open{{end}}>
+  <details class="advanced"{{if or .Form.Anonymous .Form.CompatMode .Errors.anonymous_identity}} open{{end}}>
     <summary>Advanced</summary>
     <div class="field{{if .Errors.anonymous_identity}} has-error{{end}}">
       <label for="anonymous_identity">Anonymous identity (outer identity)</label>
       <input id="anonymous_identity" name="anonymous_identity" value="{{.Form.Anonymous}}" autocapitalize="none" spellcheck="false">
       <p class="help">Optional. Some organisations ask for something like <code>anonymous@university.edu</code>, so your real username stays hidden.</p>
       {{with .Errors.anonymous_identity}}<p class="field-error">{{.}}</p>{{end}}
+    </div>
+    <div class="field">
+      <label class="check"><input type="checkbox" name="compat_mode"{{if .Form.CompatMode}} checked{{end}}> Compatibility mode (switch off PMF)</label>
+      <p class="help">Helps when the Raspberry Pi cannot join the network at all. The bridge switches this on by itself when it notices that problem. Leave it off for networks that require WPA3.</p>
     </div>
   </details>
 </section>

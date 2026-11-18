@@ -21,7 +21,7 @@ import (
 type conn struct {
 	id, uuid, typ, iface string
 	ssid, password, eap  string
-	address              string
+	address, pmf         string
 }
 
 type logLine struct {
@@ -69,6 +69,10 @@ var accessPoints = []nm.AccessPoint{
 	{SSID: "Uni-Guest", BSSID: "AA:BB:CC:00:02:01", FreqMHz: 2412, Signal: 70, Security: ""},
 	{SSID: "FRITZ!Box 7590 XY", BSSID: "AA:BB:CC:00:03:01", FreqMHz: 2462, Signal: 31, Security: "WPA2"},
 	{SSID: "", BSSID: "AA:BB:CC:00:04:01", FreqMHz: 2437, Signal: 40, Security: "WPA2 802.1X"},
+	// LegacyNet can only be joined with PMF switched off (like some Pi WiFi
+	// chips behave); WPA3-Only can never be joined.
+	{SSID: "LegacyNet", BSSID: "AA:BB:CC:00:05:01", FreqMHz: 2437, Signal: 60, Security: "WPA2 802.1X"},
+	{SSID: "WPA3-Only", BSSID: "AA:BB:CC:00:06:01", FreqMHz: 5240, Signal: 58, Security: "WPA3 802.1X"},
 }
 
 var stateText = map[int]string{
@@ -195,6 +199,7 @@ func (d *Demo) Load(ctx context.Context, path string) error {
 		typ:     kf["connection"]["type"],
 		iface:   kf["connection"]["interface-name"],
 		address: kf["ipv4"]["address1"],
+		pmf:     kf["wifi-security"]["pmf"],
 	}
 	if c.uuid == "" {
 		return cmdErr("failed to load connection: missing uuid")
@@ -266,6 +271,15 @@ func (d *Demo) Up(ctx context.Context, uuid, iface string, wait time.Duration) e
 			return err
 		}
 		return fail("The Wi-Fi network could not be found", "CTRL-EVENT-NETWORK-NOT-FOUND")
+	}
+	if c.ssid == "WPA3-Only" || (c.ssid == "LegacyNet" && c.pmf != "1") {
+		if err := d.sleep(ctx, 3*time.Second); err != nil {
+			return err
+		}
+		return fail("Secrets were required, but not provided",
+			"Trying to associate with aa:bb:cc:00:05:01 (SSID='"+c.ssid+"' freq=2437 MHz)",
+			"CTRL-EVENT-ASSOC-REJECT bssid=00:00:00:00:00:00 status_code=16",
+			"CTRL-EVENT-SSID-TEMP-DISABLED id=0 ssid=\""+c.ssid+"\" auth_failures=1 duration=10 reason=CONN_FAILED")
 	}
 	d.mu.Lock()
 	d.logf("wpa_supplicant[612]", "wlan0: CTRL-EVENT-EAP-STARTED EAP authentication started")
